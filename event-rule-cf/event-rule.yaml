@@ -1,0 +1,46 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation template for EventBridge Rulecreate-report
+Resources:
+  Rule5709d63b:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: create-report
+      EventPattern: >-
+        {"source":["aws.s3"],"detail-type":["Object Created"],"detail":{"bucket":{"name":["test-my-bucket-aws"]},"object":{"key":[{"prefix":"Unsaved/"},{"suffix":".csv"}]}}}
+      State: ENABLED
+      Description: ''
+      EventBusName: default
+      Targets:
+        - Id: Id1c4ce815-b3b8-4982-9f71-3e643a56bf6e
+          Arn:
+            Fn::Sub: >-
+              arn:${AWS::Partition}:batch:${AWS::Region}:${AWS::AccountId}:job-queue/ito-dev-job-queue
+          RoleArn:
+            Fn::Sub: >-
+              arn:${AWS::Partition}:iam::${AWS::AccountId}:role/ito-dev-role-event-bridge
+          BatchParameters:
+            JobDefinition: >-
+              arn:aws:batch:us-east-1:437950194672:job-definition/ito-dev-job-definition:3
+            JobName: generate-report
+            RetryStrategy:
+              Attempts: 1
+          InputTransformer:
+            InputPathsMap:
+              bucketName: $.detail.bucket.name
+              objectKey: $.detail.object.key
+            InputTemplate: |
+              {
+                "ContainerOverrides": {
+                  "Environment": [
+                    {
+                      "Name": "BUCKET_NAME",
+                      "Value": "<bucketName>"
+                    },
+                    {
+                      "Name": "OBJECT_KEY",
+                      "Value": "<objectKey>"
+                    }
+                  ]
+                }
+              }
+Parameters: {}
